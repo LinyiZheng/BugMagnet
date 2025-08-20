@@ -64,15 +64,20 @@ module.exports = function ContextMenu(standardConfig, browserInterface, menuBuil
 		},
 		rebuildMenu = function (options) {
 			console.log('BugMagnet: 开始重建菜单');
+			console.log('BugMagnet: 标准配置:', standardConfig);
+			console.log('BugMagnet: 额外配置:', options);
+			
 			return menuBuilder.removeAll()
 				.then(() => {
 					const rootMenu =  menuBuilder.rootMenu('Bug Magnet'),
 						additionalMenus = options && options.additionalMenus,
 						skipStandard = options && options.skipStandard;
 					if (!skipStandard) {
+						console.log('BugMagnet: 处理标准配置菜单');
 						processMenuObject(standardConfig, menuBuilder, rootMenu, onClick);
 					}
 					if (additionalMenus) {
+						console.log('BugMagnet: 处理额外配置菜单');
 						loadAdditionalMenus(additionalMenus, rootMenu);
 					}
 					addGenericMenus(rootMenu);

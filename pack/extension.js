@@ -243,8 +243,12 @@ const ContextMenu = __webpack_require__(4),
 	ChromeMenuBuilder = __webpack_require__(7),
 	ChromeBrowserInterface = __webpack_require__(1),
 	processMenuObject = __webpack_require__(8),
+	// 从pack目录加载配置，这样用户修改后能立即生效
 	standardConfig = __webpack_require__(9),
 	isFirefox = (typeof browser !== 'undefined');
+
+console.log('BugMagnet: 加载配置:', standardConfig);
+
 new ContextMenu(
 	standardConfig,
 	new ChromeBrowserInterface(chrome),
@@ -324,16 +328,26 @@ module.exports = function ContextMenu(standardConfig, browserInterface, menuBuil
 			menuBuilder.menuItem('Help/Support', rootMenu, () => browserInterface.openUrl('https://bugmagnet.org/contributing.html'));
 		},
 		rebuildMenu = function (options) {
-			const rootMenu =  menuBuilder.rootMenu('Bug Magnet'),
-				additionalMenus = options && options.additionalMenus,
-				skipStandard = options && options.skipStandard;
-			if (!skipStandard) {
-				processMenuObject(standardConfig, menuBuilder, rootMenu, onClick);
-			}
-			if (additionalMenus) {
-				loadAdditionalMenus(additionalMenus, rootMenu);
-			}
-			addGenericMenus(rootMenu);
+			console.log('BugMagnet: 开始重建菜单');
+			console.log('BugMagnet: 标准配置:', standardConfig);
+			console.log('BugMagnet: 额外配置:', options);
+			
+			return menuBuilder.removeAll()
+				.then(() => {
+					const rootMenu =  menuBuilder.rootMenu('Bug Magnet'),
+						additionalMenus = options && options.additionalMenus,
+						skipStandard = options && options.skipStandard;
+					if (!skipStandard) {
+						console.log('BugMagnet: 处理标准配置菜单');
+						processMenuObject(standardConfig, menuBuilder, rootMenu, onClick);
+					}
+					if (additionalMenus) {
+						console.log('BugMagnet: 处理额外配置菜单');
+						loadAdditionalMenus(additionalMenus, rootMenu);
+					}
+					addGenericMenus(rootMenu);
+					console.log('BugMagnet: 菜单重建完成');
+				});
 		},
 		wireStorageListener = function () {
 			browserInterface.addStorageListener(function () {
@@ -343,9 +357,17 @@ module.exports = function ContextMenu(standardConfig, browserInterface, menuBuil
 			});
 		};
 	self.init = function () {
-		return browserInterface.getOptionsAsync()
+		console.log('BugMagnet: 开始初始化上下文菜单');
+		return menuBuilder.removeAll()
+			.then(() => browserInterface.getOptionsAsync())
 			.then(rebuildMenu)
-			.then(wireStorageListener);
+			.then(wireStorageListener)
+			.then(() => {
+				console.log('BugMagnet: 上下文菜单初始化完成');
+			})
+			.catch((error) => {
+				console.error('BugMagnet: 初始化失败:', error);
+			});
 	};
 };
 
@@ -395,13 +417,23 @@ module.exports = function ChromeMenuBuilder(chrome) {
 	'use strict';
 	let itemValues = {},
 		itemHandlers = {},
-		menuCounter = 0;
+		menuCounter = 0,
+		usedIds = new Set();
 	const self = this,
 		contexts = ['editable'];
 	
 	// 生成唯一ID的辅助函数
 	const generateId = (prefix) => {
-		return `${prefix}_${++menuCounter}`;
+		const timestamp = Date.now();
+		const random = Math.random().toString(36).substr(2, 9);
+		const id = `${prefix}_${timestamp}_${random}`;
+		usedIds.add(id);
+		return id;
+	};
+	
+	// 清理ID记录
+	const cleanupId = (id) => {
+		usedIds.delete(id);
 	};
 	
 	self.rootMenu = function (title) {
@@ -456,8 +488,11 @@ module.exports = function ChromeMenuBuilder(chrome) {
 		return id;
 	};
 	self.removeAll = function () {
+		// 清理所有数据
 		itemValues = {};
 		itemHandlers = {};
+		usedIds.clear();
+		menuCounter = 0;
 		return new Promise(resolve => chrome.contextMenus.removeAll(resolve));
 	};
 	chrome.contextMenus.onClicked.addListener((info, tab) => {
