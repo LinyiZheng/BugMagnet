@@ -104,11 +104,16 @@ module.exports = function ChromeBrowserInterface(chrome) {
 	'use strict';
 	const self = this;
 	self.saveOptions = function (options) {
-		chrome.storage.sync.set(options);
+		chrome.storage.local.set(options);
 	};
 	self.getOptionsAsync = function () {
 		return new Promise((resolve) => {
-			chrome.storage.sync.get(null, resolve);
+			chrome.storage.local.get(null, function (localOptions) {
+				chrome.storage.sync.get(null, function (syncOptions) {
+					const merged = Object.assign({}, syncOptions || {}, localOptions || {});
+					resolve(merged);
+				});
+			});
 		});
 	};
 	self.openSettings = function () {
@@ -123,7 +128,7 @@ module.exports = function ChromeBrowserInterface(chrome) {
 	};
 	self.addStorageListener = function (listener) {
 		chrome.storage.onChanged.addListener(function (changes, areaName) {
-			if (areaName === 'sync') {
+			if (areaName === 'local' || areaName === 'sync') {
 				listener(changes);
 			};
 		});
@@ -243,19 +248,33 @@ const ContextMenu = __webpack_require__(4),
 	ChromeMenuBuilder = __webpack_require__(7),
 	ChromeBrowserInterface = __webpack_require__(1),
 	processMenuObject = __webpack_require__(8),
-	// 从pack目录加载配置，这样用户修改后能立即生效
-	standardConfig = __webpack_require__(9),
+	templateConfig = __webpack_require__(9),
 	isFirefox = (typeof browser !== 'undefined');
 
-console.log('BugMagnet: 加载配置:', standardConfig);
+const browserInterface = new ChromeBrowserInterface(chrome);
+const menuBuilder = new ChromeMenuBuilder(chrome);
 
-new ContextMenu(
-	standardConfig,
-	new ChromeBrowserInterface(chrome),
-	new ChromeMenuBuilder(chrome),
-	processMenuObject,
-	!isFirefox
-).init();
+const loadConfig = function () {
+	try {
+		const url = chrome.runtime.getURL('config.json');
+		return fetch(url)
+			.then(r => r.ok ? r.json() : Promise.reject(new Error('config.json not found')))
+			.catch(() => templateConfig);
+	} catch (e) {
+		return Promise.resolve(templateConfig);
+	}
+};
+
+loadConfig().then((standardConfig) => {
+	console.log('BugMagnet: 加载配置:', standardConfig);
+	return new ContextMenu(
+		standardConfig,
+		browserInterface,
+		menuBuilder,
+		processMenuObject,
+		!isFirefox
+	).init();
+});
 
 
 

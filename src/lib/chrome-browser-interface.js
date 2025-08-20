@@ -2,11 +2,16 @@ module.exports = function ChromeBrowserInterface(chrome) {
 	'use strict';
 	const self = this;
 	self.saveOptions = function (options) {
-		chrome.storage.sync.set(options);
+		chrome.storage.local.set(options);
 	};
 	self.getOptionsAsync = function () {
 		return new Promise((resolve) => {
-			chrome.storage.sync.get(null, resolve);
+			chrome.storage.local.get(null, function (localOptions) {
+				chrome.storage.sync.get(null, function (syncOptions) {
+					const merged = Object.assign({}, syncOptions || {}, localOptions || {});
+					resolve(merged);
+				});
+			});
 		});
 	};
 	self.openSettings = function () {
@@ -21,7 +26,7 @@ module.exports = function ChromeBrowserInterface(chrome) {
 	};
 	self.addStorageListener = function (listener) {
 		chrome.storage.onChanged.addListener(function (changes, areaName) {
-			if (areaName === 'sync') {
+			if (areaName === 'local' || areaName === 'sync') {
 				listener(changes);
 			};
 		});
