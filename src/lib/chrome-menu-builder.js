@@ -2,13 +2,23 @@ module.exports = function ChromeMenuBuilder(chrome) {
 	'use strict';
 	let itemValues = {},
 		itemHandlers = {},
-		menuCounter = 0;
+		menuCounter = 0,
+		usedIds = new Set();
 	const self = this,
 		contexts = ['editable'];
 	
 	// 生成唯一ID的辅助函数
 	const generateId = (prefix) => {
-		return `${prefix}_${++menuCounter}`;
+		const timestamp = Date.now();
+		const random = Math.random().toString(36).substr(2, 9);
+		const id = `${prefix}_${timestamp}_${random}`;
+		usedIds.add(id);
+		return id;
+	};
+	
+	// 清理ID记录
+	const cleanupId = (id) => {
+		usedIds.delete(id);
 	};
 	
 	self.rootMenu = function (title) {
@@ -63,8 +73,11 @@ module.exports = function ChromeMenuBuilder(chrome) {
 		return id;
 	};
 	self.removeAll = function () {
+		// 清理所有数据
 		itemValues = {};
 		itemHandlers = {};
+		usedIds.clear();
+		menuCounter = 0;
 		return new Promise(resolve => chrome.contextMenus.removeAll(resolve));
 	};
 	chrome.contextMenus.onClicked.addListener((info, tab) => {

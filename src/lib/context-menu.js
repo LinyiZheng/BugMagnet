@@ -63,16 +63,21 @@ module.exports = function ContextMenu(standardConfig, browserInterface, menuBuil
 			menuBuilder.menuItem('Help/Support', rootMenu, () => browserInterface.openUrl('https://bugmagnet.org/contributing.html'));
 		},
 		rebuildMenu = function (options) {
-			const rootMenu =  menuBuilder.rootMenu('Bug Magnet'),
-				additionalMenus = options && options.additionalMenus,
-				skipStandard = options && options.skipStandard;
-			if (!skipStandard) {
-				processMenuObject(standardConfig, menuBuilder, rootMenu, onClick);
-			}
-			if (additionalMenus) {
-				loadAdditionalMenus(additionalMenus, rootMenu);
-			}
-			addGenericMenus(rootMenu);
+			console.log('BugMagnet: 开始重建菜单');
+			return menuBuilder.removeAll()
+				.then(() => {
+					const rootMenu =  menuBuilder.rootMenu('Bug Magnet'),
+						additionalMenus = options && options.additionalMenus,
+						skipStandard = options && options.skipStandard;
+					if (!skipStandard) {
+						processMenuObject(standardConfig, menuBuilder, rootMenu, onClick);
+					}
+					if (additionalMenus) {
+						loadAdditionalMenus(additionalMenus, rootMenu);
+					}
+					addGenericMenus(rootMenu);
+					console.log('BugMagnet: 菜单重建完成');
+				});
 		},
 		wireStorageListener = function () {
 			browserInterface.addStorageListener(function () {
@@ -82,9 +87,17 @@ module.exports = function ContextMenu(standardConfig, browserInterface, menuBuil
 			});
 		};
 	self.init = function () {
-		return browserInterface.getOptionsAsync()
+		console.log('BugMagnet: 开始初始化上下文菜单');
+		return menuBuilder.removeAll()
+			.then(() => browserInterface.getOptionsAsync())
 			.then(rebuildMenu)
-			.then(wireStorageListener);
+			.then(wireStorageListener)
+			.then(() => {
+				console.log('BugMagnet: 上下文菜单初始化完成');
+			})
+			.catch((error) => {
+				console.error('BugMagnet: 初始化失败:', error);
+			});
 	};
 };
 
