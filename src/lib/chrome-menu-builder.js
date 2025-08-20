@@ -1,26 +1,64 @@
 module.exports = function ChromeMenuBuilder(chrome) {
 	'use strict';
 	let itemValues = {},
-		itemHandlers = {};
+		itemHandlers = {},
+		menuCounter = 0;
 	const self = this,
 		contexts = ['editable'];
+	
+	// 生成唯一ID的辅助函数
+	const generateId = (prefix) => {
+		return `${prefix}_${++menuCounter}`;
+	};
+	
 	self.rootMenu = function (title) {
-		return chrome.contextMenus.create({'title': title, 'contexts': contexts});
+		const id = generateId('bugmagnet-root');
+		return chrome.contextMenus.create({ 
+			'id': id,
+			'title': title, 
+			'contexts': contexts
+		});
 	};
 	self.subMenu = function (title, parentMenu) {
-		return chrome.contextMenus.create({'title': title, 'parentId': parentMenu, 'contexts': contexts});
+		const id = generateId('bugmagnet-sub');
+		return chrome.contextMenus.create({
+			'id': id,
+			'title': title, 
+			'parentId': parentMenu, 
+			'contexts': contexts
+		});
 	};
 	self.separator = function (parentMenu) {
-		return chrome.contextMenus.create({'type': 'separator', 'parentId': parentMenu, 'contexts': contexts});
+		const id = generateId('bugmagnet-sep');
+		return chrome.contextMenus.create({
+			'id': id,
+			'type': 'separator', 
+			'parentId': parentMenu, 
+			'contexts': contexts
+		});
 	};
 	self.menuItem = function (title, parentMenu, clickHandler, value) {
-		const id = chrome.contextMenus.create({'title': title, 'parentId': parentMenu, 'contexts': contexts});
+		const id = generateId('bugmagnet-item');
+		chrome.contextMenus.create({ 
+			'id': id,
+			'title': title, 
+			'parentId': parentMenu, 
+			'contexts': contexts
+		});
 		itemValues[id] = value;
 		itemHandlers[id] = clickHandler;
 		return id;
 	};
 	self.choice  = function (title, parentMenu, clickHandler, value) {
-		const id = chrome.contextMenus.create({type: 'radio', checked: value, title: title, parentId: parentMenu, 'contexts': contexts});
+		const id = generateId('bugmagnet-choice');
+		chrome.contextMenus.create({
+			id: id,
+			type: 'radio', 
+			checked: value, 
+			title: title, 
+			parentId: parentMenu, 
+			'contexts': contexts
+		});
 		itemHandlers[id] = clickHandler;
 		return id;
 	};
